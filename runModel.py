@@ -1,0 +1,86 @@
+from vehicle import Car
+from vehicle import Driver
+from pathlib import Path
+import numpy as np
+import utils
+import driving_inputs
+
+MODEL_ID = "selfDrivingModelUpdatewithAttention.h5"  
+
+
+def image_to_angle(model, image, gain=0.25):
+    
+    #preprocess image
+    image = utils.preprocess_images(image)
+
+    #reshape image to have 4 dimensions
+    image = image.reshape(1, image.shape[0], image.shape[1], image.shape[2])
+
+    prediction = np.array(model(image, training=False))[0]
+    if len(prediction) == 1:  # regression
+        angle = float(prediction)
+        print(f"angle {angle:.2f}")
+    else:  #classification
+        left, straight, right = prediction
+        if left > straight and left > right:
+            angle = -gain  # left
+        elif right > straight and right > left:
+            angle = gain  # right
+        else:
+            angle = 0  # straight
+        print(
+            f"angle {angle:.2f} - left {left:.2f} - straight {straight:.2f} - right {right:.2f}"
+        )
+
+    return angle
+
+def main():
+    #create the Robot instance.
+    robot = Car()
+    driver = Driver()
+
+    #get the time step of the current vworld.
+    timestep = int(robot.getBasicTimeStep())
+
+    #create camear instance
+    camera = robot.getDevice("camera")
+    camera.enable(timestep)  # timestep
+
+    #controller
+    controller = driving_inputs.XboxOrKeyboardController()
+
+    #load model
+    current_folder = Path(__file__).parent
+    models_folder = current_folder / "models"
+    if not models_folder.exists():
+        raise Exception("Missing models foler")
+
+    model = utils.get_model(models_folder, MODEL_ID)
+
+    step = 0
+    while robot.step() != -1:
+        #get image from camera
+        image = utils.get_image_rgb(camera)
+
+        angle = image_to_angle(model, image)
+
+        leftY, rightX = controller.y_x()
+
+        #use user controller if set
+        if leftY != 0:
+            speed = leftY * 40
+        else:
+            speed = 35  #45 same as createData
+
+        if rightX != 0:
+            angle = rightX * 0.25
+
+        driver.setSteeringAngle(angle)
+        driver.setCruisingSpeed(speed)
+
+        #increase step
+        step += 1
+
+
+if __name__ == "__main__":
+    main()
