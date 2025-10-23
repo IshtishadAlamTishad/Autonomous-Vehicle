@@ -1,8 +1,6 @@
 # Autonomous Vehicle
 **Developed an Autonomous Vehicle using Webots, controlled by a Convolutional Neural Network (CNN)**
 
-
-![alt text](image.png)
 [Demo Video](https://youtu.be/mcM9Ateer5I?si=Ds7jcd3WmixGMfo3)
 
 ---
